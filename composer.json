@@ -1,0 +1,19 @@
+{
+    "name": "kalya/gamer-finder-api",
+    "authors": [
+        {
+            "name": "KalyaJex",
+            "email": "svslither@gmail.com"
+        }
+    ],
+    "require": {
+        "firebase/php-jwt": "^6.10",
+        "paragonie/sodium_compat": "^2.0",
+        "vlucas/phpdotenv": "^5.6"
+    },
+    "autoload": {
+        "psr-4": {
+            "App\\": "src/"
+        }
+    }
+}
