@@ -13,9 +13,19 @@ class UserRepository {
   public function __construct(private Database $db) {}
 
   public function create(UserModel $user) {
-    $sql = 'INSERT INTO `users` (`username`, `email`, `password`) VALUES (:username, :email, :password)';
-    $success = $this->db->query($sql, ['username' => $user->username, 'email' =>$user->email, 'password' => $user->password]);
-    return ['success' => $success, 'userId' => $this->db->getconnection()->lastInsertId()];
+    $sql = 'INSERT INTO `users` (`username`, `email`, `password`, `is_email_confirmed`, `email_confirmation_token`) VALUES (:username, :email, :password, :is_email_confirmed, :email_confirmation_token)';
+    return $this->db->query($sql, [
+      'username' => $user->username, 
+      'email' =>$user->email, 
+      'password' => $user->password, 
+      'is_email_confirmed' => $user->is_email_confirmed, 
+      'email_confirmation_token' => $user->email_confirmation_token,
+    ]);
+  }
+
+  public function update(UserModel $user) {
+    $sql = 'UPDATE `users` SET `username` = :username, `email` = :email WHERE id = :id';
+    return $this->db->query($sql, ['username' => $user->username, 'email' =>$user->email, 'id' => $user->id]);
   }
 
   public function delete(int $id) {
@@ -23,32 +33,41 @@ class UserRepository {
     $this->db->query($sql, ['id' => $id]);
   }
 
-  public function fetchByUsername(string $username) {
+  public function findByUsername(string $username) {
     $sql = 'SELECT * FROM `users` WHERE `username` =:username';
-    return $this->db->fetch($sql, ['username' => $username], UserModel::class);
+    return $this->db->find($sql, ['username' => $username], UserModel::class);
   }
 
-  public function fetchByEmail(string $email) {
+  public function findByEmail(string $email) {
     $sql = 'SELECT * FROM `users` WHERE `email` =:email';
-    return $this->db->fetch($sql, ['email' => $email], UserModel::class);
+    return $this->db->find($sql, ['email' => $email], UserModel::class);
   }
 
-  public function fetchById(int $id) {
+  public function findById(int $id) {
     $sql = 'SELECT * FROM `users` WHERE `id` =:id';
-    return $this->db->fetch($sql, ['id' => $id], UserModel::class);
+    return $this->db->find($sql, ['id' => $id], UserModel::class);
+  }
+
+  public function findAll() {
+    $sql = 'SELECT * FROM `users`';
+    return $this->db->findAll($sql, [], UserModel::class);
   }
 
   public function getUsernameExists(string $username): bool {
-    $sql = 'SELECT COUNT(*) AS `count` FROM `users` WHERE username = :username';
-    $stmt = $this->db->query($sql, ['username' => $username]);
-    $result = $stmt->fetch(PDO::FETCH_ASSOC);
-    return ($result['count'] >= 1);
+    return $this->db->getExist('users', ['username' => $username]);
   }
 
   public function getEmailExists(string $email): bool {
-    $sql = 'SELECT COUNT(*) AS `count` FROM `users` WHERE email = :email';
-    $stmt = $this->db->query($sql, ['email' => $email]);
-    $result = $stmt->fetch(PDO::FETCH_ASSOC);
-    return ($result['count'] >= 1);
+    return $this->db->getExist('users', ['email' => $email]);
+  }
+
+  public function findByEmailConfirmationToken($token) {
+    $sql = 'SELECT * FROM `users` WHERE `email_confirmation_token` =:email_confirmation_token';
+    return $this->db->find($sql, ['email_confirmation_token' => $token], UserModel::class);
+  }
+
+  public function confirmEmail($userId) {
+    $sql = 'UPDATE `users` SET `is_email_confirmed` = :is_email_confirmed WHERE id = :id';
+    return $this->db->query($sql, ['is_email_confirmed' => true, 'id' => $userId]);
   }
 }

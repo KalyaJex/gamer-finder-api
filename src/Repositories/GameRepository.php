@@ -12,9 +12,17 @@ class GameRepository {
 
   public function __construct(private Database $db) {}
 
-  public function create(int $steamAppId, string $title, string $genre, int $releaseDate) {
-    $sql = 'INSERT INTO `games` (`steam_app_id`, `title`, `genre`, `release_date`) VALUES (:steamAppId, :title, :genre, :releaseDate)';
-    $this->db->query($sql, ['steam_app_id' => $steamAppId, 'title' =>$title, 'genre' => $genre, 'release_date' => $releaseDate]);
+  public function create(GameModel $game) {
+    $sql = 'INSERT INTO `games` (`steam_app_id`, `title`, `genre`, `release_date`) VALUES (:steam_app_id, :title, :genre, :release_date)';
+    $this->db->query(
+      $sql, 
+      [
+        'steam_app_id' => $game->steam_app_id, 
+        'title' =>$game->title, 
+        'genre' => $game->genre, 
+        'release_date' => $game->release_date
+      ]
+    );
   }
 
   public function delete(int $id) {
@@ -24,18 +32,20 @@ class GameRepository {
 
   public function fetchByTitle(string $title) {
     $sql = 'SELECT * FROM `games` WHERE `title` =:title';
-    return $this->db->fetch($sql, ['title' => $title], GameModel::class);
+    return $this->db->find($sql, ['title' => $title], GameModel::class);
+  }
+
+  public function fetchBySteamAppId(string $steam_app_id) {
+    $sql = 'SELECT * FROM `games` WHERE `steam_app_id` =:steam_app_id';
+    return $this->db->find($sql, ['steam_app_id' => $steam_app_id], GameModel::class);
   }
 
   public function fetchById(int $id) {
     $sql = 'SELECT * FROM `games` WHERE `id` =:id';
-    return $this->db->fetch($sql, ['id' => $id], GameModel::class);
+    return $this->db->find($sql, ['id' => $id], GameModel::class);
   }
 
-  public function getTitleExists(string $title): bool {
-    $sql = 'SELECT COUNT(*) AS `count` FROM `games` WHERE title = :title';
-    $stmt = $this->db->query($sql, ['username' => $title]);
-    $result = $stmt->fetch(PDO::FETCH_ASSOC);
-    return ($result['count'] >= 1);
+  public function getSteamAppIdExists(string $steam_app_id): bool {
+    return $this->db->getExist('games', ['steam_app_id' => $steam_app_id]);
   }
 }

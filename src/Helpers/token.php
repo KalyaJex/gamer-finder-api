@@ -6,7 +6,7 @@ use Firebase\JWT\Key;
 function generateAccessToken($userId) {
   $payload = [
     'user_id' => $userId,
-    'exp' => time() + 3600 // Token expires in 1 hour
+    'exp' => time() + 300,
   ];
   $key = $_ENV['ACCESS_SECRET_KEY'];
   return JWT::encode($payload, $key, 'HS256');
@@ -19,6 +19,12 @@ function generateRefreshToken($userId) {
   ];
   $key = $_ENV['REFRESH_KEY'];
   return JWT::encode($payload, $key, 'HS256');
+}
+
+function validateTokenExpTime($createdTime) {
+  $createdTime = strtotime($createdTime);
+  $now = time();
+  return $createdTime + $_ENV['REFRESH_TOKEN_EXP'] >= $now;
 }
 
 function validateToken($token, $key) {

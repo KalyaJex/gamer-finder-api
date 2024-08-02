@@ -5,7 +5,7 @@ namespace App\Controllers;
 require __DIR__ . '/../../vendor/autoload.php';
 
 
-use App\Repository\UserRepository;
+use App\Repositories\UserRepository;
 use Firebase\JWT\JWT;
 use Exception;
 use Firebase\JWT\Key;
@@ -17,7 +17,7 @@ class AuthController {
   public function authenticateUser($email, $password) {
 
 
-    $user = $this->userRepository->fetchByEmail($email);
+    $user = $this->userRepository->findByEmail($email);
 
     if(!empty($user) && password_verify($password, $user->password)) {
       $accessToken = $this->generateAccessToken($user->id);

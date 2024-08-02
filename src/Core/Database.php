@@ -7,14 +7,18 @@ use PDO;
 
 class Database {
   private $pdo;
-  private $host = DB_HOST;
-  private $dbName = DB_DATABASE_NAME;
-  private $username = DB_USERNAME;
-  private $password = DB_PASSWORD;
+  private $host;
+  private $dbName;
+  private $username;
+  private $password;
 
 
   public function __construct()
   {
+    $this->host = $_ENV['DB_HOST'];
+    $this->dbName = $_ENV['DB_DATABASE_NAME'];
+    $this->username = $_ENV['DB_USERNAME'];
+    $this->password = $_ENV['DB_PASSWORD'];
     $this->connect();
   }
 
@@ -48,17 +52,51 @@ class Database {
         $stmt->bindValue($key, $value, is_int($value) ? PDO::PARAM_INT : PDO::PARAM_STR);
       }
 
-      $stmt->execute();
-      return $stmt;
+      return $stmt->execute();
     } catch (Exception $e) {
-      $logger = new Logger($this->pdo);
+      $logger = new Logger($this);
       $logger->error($e->getMessage());
       throw new Exception("Could not perform query: $sql", 0, $e);
     }
   }
 
-  public function fetch(string $sql, array $params, string $model) {
-    $stmt = $this->query($sql, $params);
+  public function getExist(string $tableName, array $params): bool {
+    try {
+      $searchString = '';
+      foreach ($params as $key => $value) {
+        $searchString .= "`$key` =:$key";
+        if ($key !== array_key_last($params)) {
+          $searchString .= ' AND ';
+        }
+      }
+      $sql = 'SELECT COUNT(*) AS `count` FROM' . $tableName . 'WHERE ' . $searchString;
+      $stmt = $this->pdo->prepare($sql);
+      $this->confirmQuery($sql, $stmt);
+
+      foreach ($params as $key => $value) {
+        $stmt->bindValue($key, $value, is_int($value) ? PDO::PARAM_INT : PDO::PARAM_STR);
+      }
+
+      $stmt->execute();
+      $stmt->setFetchMode(PDO::FETCH_ASSOC);
+      $result = $stmt->fetch();
+      return ($result['count'] >= 1);
+    } catch (Exception $e) {
+      $logger = new Logger($this);
+      $logger->error($e->getMessage());
+      throw new Exception("Could not perform search on $tableName", 0, $e);
+    }
+  }
+
+  public function find(string $sql, array $params, string $model) {
+    $stmt = $this->pdo->prepare($sql);
+    $this->confirmQuery($sql, $stmt);
+
+    foreach ($params as $key => $value) {
+      $stmt->bindValue($key, $value, is_int($value) ? PDO::PARAM_INT : PDO::PARAM_STR);
+    }
+
+    $stmt->execute();
     $stmt->setFetchMode(PDO::FETCH_CLASS, $model);
     $entry = $stmt->fetch();
     if (!empty($entry)) {
@@ -68,8 +106,15 @@ class Database {
     }
   }
 
-  public function fetchAll(string $sql, array $params, string $model) {
-    $stmt = $this->query($sql, $params);
+  public function findAll(string $sql, array $params, string $model) {
+    $stmt = $this->pdo->prepare($sql);
+    $this->confirmQuery($sql, $stmt);
+
+    foreach ($params as $key => $value) {
+      $stmt->bindValue($key, $value, is_int($value) ? PDO::PARAM_INT : PDO::PARAM_STR);
+    }
+
+    $stmt->execute();
     $stmt->setFetchMode(PDO::FETCH_CLASS, $model);
     $result = $stmt->fetchAll();
     if (!empty($result)) {

@@ -4,8 +4,8 @@ namespace App\Models;
 
 class GameModel {
   public int $id;
-  public int $steamAppId;
+  public int $steam_app_id;
   public string $title;
   public string $genre;
-  public string $releaseDate;
+  public string $release_date;
 }

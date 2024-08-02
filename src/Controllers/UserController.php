@@ -6,61 +6,94 @@ require __DIR__ . '/../../vendor/autoload.php';
 
 use App\Models\UserModel;
 use App\Repositories\UserRepository;
+use App\Services\AuthenticationService;
+use App\Services\RegistrationService;
+use App\Services\UserProfileService;
+use App\Validators\UserValidator;
+use App\Helpers\Sanitizer;
 
 class UserController {
 
-  public function __construct(private UserRepository $userRepository, private AuthController $authController) {}
+  public function __construct(
+    private UserRepository $userRepository, 
+    private RegistrationService $registrationService,
+    private AuthenticationService $authenticationService,
+    private UserProfileService $userProfileService,
+    private Sanitizer $sanitizer) {}
 
   public function register($data) {
-    $data['username'] = sanitizeInput($data['username'] );
+    $data = Sanitizer::sanitize($data);
+    $response = $this->registrationService->userRegister($data);
+
+    http_response_code($response['status']);
+    echo json_encode($response['body']);
+  }
+
+  public function update(int $userId, array $data) {
     $data['email'] = sanitizeEmail($data['email'] );
-    $user = new UserModel($data);
+    $data['username'] = sanitizeInput($data['username'] );
 
-    $errors = $user->validateUser();
-    if (!empty($errors)) {
-      return ['status' => 400, 'body' => ['errors' => $errors]];
-    }
-
-    if ($this->userRepository->getUsernameExists($user->username)) {
-      return ['status' => 409, 'body' => ['error' => 'Username already taken']];
-    }
-    if ($this->userRepository->getEmailExists($user->email)) {
-      return ['status' => 409, 'body' => ['error' => 'Email address already used']];
-    }
-
-    $user->password = password_hash($user->password, PASSWORD_DEFAULT);
-    $result = $this->userRepository->create($user);
-    $userId = $result['userId'];
-    $success = $result['success'];
-
-    if ($success) {
-      $accessToken = $this->authController->generateAccessToken($result['userId']);
-      $refreshToken  = $this->authController->generateRefreshToken($result['userId']);
-      return [
-        'status' => 201, 
-        'body' => [
-          'message' => 'User registered successfully',
-          'access_token' => $accessToken,
-          'refresh_token' => $refreshToken,
-        ],
-      ];
-    } else {
-      return ['status' => 500, 'body' => ['error' => 'Internal Server Error']];
-    }
+    return $this->userProfileService->updateUserProfile($userId, $data);
   }
 
   public function login($data) {
-    $data['password'] = sanitizeInput($data['password'] );
-    $data['email'] = sanitizeEmail($data['email'] );
+    $data = Sanitizer::sanitize($data);
 
-    $user = $this->userRepository->fetchByEmail($data['email']);
+    $response = $this->authenticationService->authenticateUser($data['email'], $data['password']);
 
-    if(empty($user) && !password_verify($data['password'], $user['password'])) {
-      return ['status' => 401, 'body' => ['error' => 'Invalid credentials']];
+    http_response_code($response['status']);
+    echo json_encode($response['body']);
+  }
+
+  public function logout($data) {
+    $data = Sanitizer::sanitize($data);
+
+    $response = $this->authenticationService->deleteRefreshToken($data['userId'], $data['userAgent']);
+
+    http_response_code($response['status']);
+    echo json_encode($response['body']);
+  }
+
+  public function refreshToken($data) {
+    $data = Sanitizer::sanitize($data);
+
+    $response = $this->authenticationService->refreshToken($data['refresh-token'], $data['userId']);
+    http_response_code($response['status']);
+    echo json_encode($response['body']);
+  }
+
+  public function confirmEmail($data) {
+    if (!empty($data['token'])) {
+      $sanitizedToken = sanitizeInput($data['token']);
+      $user = $this->userRepository->findByEmailConfirmationToken($sanitizedToken);
+      if (!empty($user)) {
+        $this->userRepository->confirmEmail($user->id);
+        echo json_encode(['message' => 'Email confirmed successfully']);
+        return;
+      }
     }
+    http_response_code(400);
+    echo json_encode(['error' => 'Invalid token']);
+  }
 
-    $accessToken = generateAccessToken($user->id);
-    $refreshToken = generateRefreshToken($user->id);
+  public function addGameToProfile($data) {
+    $data = Sanitizer::sanitize($data);
 
+    $response = $this->userProfileService->addGameToProfile($data['steamAppId'], $data['steamAppId'], $data['genre'], $data['releaseDate'], $data['userId']);
+    http_response_code($response['status']);
+    echo json_encode($response['body']);
+  }
+
+  public function removeGameFromProfile($data) {
+    $data = Sanitizer::sanitize($data);
+
+    $response = $this->userProfileService->removeGameFromProfile($data['userId'], $data['gameId']);
+    http_response_code($response['status']);
+    echo json_encode($response['body']);
+  }
+
+  public function getAllGamesFromProfile($data) {
+    $data = Sanitizer::sanitize($data);
+    
   }
 }
