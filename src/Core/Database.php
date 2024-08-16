@@ -2,6 +2,7 @@
 
 namespace App\Core;
 
+use App\Services\RedisService;
 use Exception;
 use PDO;
 
@@ -99,6 +100,7 @@ class Database {
     $stmt->execute();
     $stmt->setFetchMode(PDO::FETCH_CLASS, $model);
     $entry = $stmt->fetch();
+    
     if (!empty($entry)) {
       return $entry;
     } else {
@@ -117,6 +119,23 @@ class Database {
     $stmt->execute();
     $stmt->setFetchMode(PDO::FETCH_CLASS, $model);
     $result = $stmt->fetchAll();
+    if (!empty($result)) {
+      return $result;
+    } else {
+      return null;
+    }
+  }
+
+  public function getColumn(string $table, string $column, string $extra = '', array $params = []) {
+    $sql = "SELECT $column FROM $table" . $extra;
+    $stmt = $this->pdo->prepare($sql);
+    $this->confirmQuery($sql, $stmt);
+
+    foreach ($params as $key => $value) {
+      $stmt->bindValue($key, $value, is_int($value) ? PDO::PARAM_INT : PDO::PARAM_STR);
+    }
+    $stmt->execute();
+    $result = $stmt->fetchAll(PDO::FETCH_COLUMN);
     if (!empty($result)) {
       return $result;
     } else {

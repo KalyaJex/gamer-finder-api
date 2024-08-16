@@ -8,13 +8,13 @@
 
 RewriteEngine On
 #Remove the comments to force https, you must have an SSL certificate.
-#RewriteCond %{HTTPS} off
-#RewriteRule (.*) https://%{HTTP_HOST}%{REQUEST_URI} [R,L]
+RewriteCond %{HTTPS} off
+RewriteRule (.*) https://%{HTTP_HOST}%{REQUEST_URI} [R,L]
 
 #Enable HTTP Authorization Header if you use php-cgi 
 # $_SERVER["HTTP_AUTHORIZATION"]
-RewriteCond %{HTTP:Authorization} ^(.*)
-RewriteRule .* - [e=HTTP_AUTHORIZATION:%1]
+#RewriteCond %{HTTP:Authorization} ^(.*)
+#RewriteRule .* - [e=HTTP_AUTHORIZATION:%1]
 
 RewriteBase /gamer-finder-api/
 RewriteCond %{REQUEST_FILENAME} !-d

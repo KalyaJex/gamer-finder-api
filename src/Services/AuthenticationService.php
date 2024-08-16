@@ -18,25 +18,51 @@ class AuthenticationService {
 
     if(!empty($user) && password_verify($password, $user->password)) {
       if ($user->is_email_confirmed) {
-        $accessToken = generateAccessToken($user->id);
+        [$accessToken, $expiresAt] = generateAccessToken($user->id);
 
         $refreshToken = new Token($user->id);
         $allUserTokens = $this->tokenRepository->findAllByUserId($user->id) ?? [];
         $releventTokens = array_filter($allUserTokens, function($token) use($refreshToken) {
           return $token->user_agent === $refreshToken->user_agent;
         });
-
         if (empty($releventTokens)) {
           $this->tokenRepository->create($refreshToken);
-          setcookie('refresh-token', $refreshToken->token, strtotime($refreshToken->created) + $_ENV['REFRESH_TOKEN_EXP'], httponly: true, path: '/');
+
+          setcookie(
+            'refresh-token',
+            $refreshToken->token,
+            [
+              'expires' => strtotime($refreshToken->created) + $_ENV['REFRESH_TOKEN_EXP'],
+              'path' => '/',
+              'domain' => '', // Set to your domain if needed
+              'secure' => true, // Set to true if using HTTPS
+              'httponly' => false,
+              'samesite' => 'Lax' // 'Strict' or 'None' if cross-site is needed
+            ]
+          );
+
+          // setcookie('refresh-token', $refreshToken->token, strtotime($refreshToken->created) + $_ENV['REFRESH_TOKEN_EXP'], httponly: true, path: '/', secure: true);
         } else {
-          setcookie('refresh-token', $releventTokens[0]->token, strtotime($releventTokens[0]->created) + $_ENV['REFRESH_TOKEN_EXP'], httponly: true, path: '/');
+          $releventTokens = array_values($releventTokens);
+          setcookie(
+            'refresh-token',
+            $releventTokens[0]->token,
+            [
+              'expires' => strtotime($releventTokens[0]->created) + $_ENV['REFRESH_TOKEN_EXP'],
+              'path' => '/',
+              'domain' => '', // Set to your domain if needed
+              'secure' => true, // Set to true if using HTTPS
+              'httponly' => false,
+              'samesite' => 'Lax' // 'Strict' or 'None' if cross-site is needed
+            ]
+          );
         }
 
         return [
           'status' => 200,
           'body' => [
-            'accessToken' => $accessToken, 
+            'token' => $accessToken,
+            'expiresAt' => $expiresAt,
           ]
         ];
       } else {
@@ -59,16 +85,17 @@ class AuthenticationService {
     }
   }
 
-  public function refreshToken(string $token, string $userId) {
+  public function refreshToken(string $token) {
     if (!empty($token)) {
       $refreshToken = $this->tokenRepository->findByToken($token);
-      if (!empty($refreshToken) && $refreshToken->user_id === $userId) {
+      if (!empty($refreshToken)) {
         if (validateTokenExpTime($refreshToken->created)) {
-          $accessToken = generateAccessToken($userId);
+          [$accessToken, $expiresAt] = generateAccessToken($refreshToken->user_id);
           return [
             'status' => 200,
             'body' => [
-              'accessToken' => $accessToken, 
+              'token' => $accessToken,
+              'expiresAt' => $expiresAt,
             ]
           ];
         } else {

@@ -57,7 +57,7 @@ class UserController {
   public function refreshToken($data) {
     $data = Sanitizer::sanitize($data);
 
-    $response = $this->authenticationService->refreshToken($data['refresh-token'], $data['userId']);
+    $response = $this->authenticationService->refreshToken($data['refresh-token']);
     http_response_code($response['status']);
     echo json_encode($response['body']);
   }
@@ -96,4 +96,17 @@ class UserController {
     $data = Sanitizer::sanitize($data);
     
   }
+
+  public function getUserProfile($data) {
+    $data = Sanitizer::sanitize($data);
+
+    $response = $this->userProfileService->getUserProfile($data['userId']);
+    http_response_code($response['status']);
+    echo json_encode($response['body']);
+  }
+
+  // public function getUsers($data) {
+
+  //   $response = $this->userProfileService
+  // }
 }

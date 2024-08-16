@@ -13,12 +13,21 @@ class UserProfileService {
   public function __construct(
     private UserRepository $userRepository,
     private GameRepository $gameRepository,
-    private UserGameRepository $userGameRepository) {}
+    private UserGameRepository $userGameRepository,
+    private RedisService $redisService) {}
   
   public function getUserProfile(int $userId) {
     $user = $this->userRepository->findById($userId);
 
     if (!empty($user)) {
+      $userGamePairs = $this->userGameRepository->findByUserId($userId);
+
+      $gameIds = [];
+      foreach ($userGamePairs as $userGame) {
+        $gameIds[] = $userGame->game_id;
+      }
+      $user->gameIds = $gameIds;
+
       return [
         'status' => 200,
         'body' => $user,
@@ -105,11 +114,12 @@ class UserProfileService {
       }
     }
 
-    $userGame = $this->userGameRepository->fetchByGameIdUserId($game);
+    $userGame = $this->userGameRepository->findByGameIdUserId($game);
 
     if (empty($userGame)) {
       $userGame = new UserGame($userId, $game->id);
       if ($this->userGameRepository->create($userGame)) {
+        $this->redisService->unlink("user:$userId:similarities");
         return [
           'status' => 200,
         ];
@@ -134,7 +144,7 @@ class UserProfileService {
   }
 
   public function removeGameFromProfile(int $userId, int $gameId) {
-    $userGame = $this->userGameRepository->fetchByGameIdUserId(new UserGame($userId, $gameId));
+    $userGame = $this->userGameRepository->findByGameIdUserId(new UserGame($userId, $gameId));
 
     if (!empty($userGame)) {
       if ($this->userGameRepository->delete($userId, $gameId)) {
@@ -162,12 +172,17 @@ class UserProfileService {
   }
 
   public function getAllGamesFromProfile(int $userId) {
-    $userGames = $this->userGameRepository->fetchByUserId($userId) ?? [];
+    $userGames = $this->userGameRepository->findByUserId($userId) ?? [];
     return [
       'status' => 200,
       'body' => [
         'userGames' => $userGames
       ]
     ];
+  }
+
+  public function getUserDetails(int $userId) {
+    $user = $this->userRepository->findById($userId);
+    $userGamePairs = $this->userGameRepository->findByUserId($userId);
   }
 }

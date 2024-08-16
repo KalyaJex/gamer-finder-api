@@ -8,9 +8,9 @@ class UserValidator {
 
   public static function validate($data) {
     $MIN_LENGTH_USERNAME = 3;
-    $MAX_LENGTH_USERNAME = 20;
+    $MAX_LENGTH_USERNAME = 30;
     $MIN_LENGTH_PASSWORD = 8;
-    $MAX_LENGTH_PASSWORD = 20;
+    $MAX_LENGTH_PASSWORD = 100;
 
     $errors = [];
 
