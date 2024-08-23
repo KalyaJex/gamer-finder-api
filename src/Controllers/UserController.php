@@ -99,7 +99,7 @@ class UserController {
 
   public function getUserProfile($data) {
     $data = Sanitizer::sanitize($data);
-
+    
     $response = $this->userProfileService->getUserProfile($data['userId']);
     http_response_code($response['status']);
     echo json_encode($response['body']);
